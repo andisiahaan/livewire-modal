@@ -31,11 +31,24 @@ window.LivewireModal = () => {
                 return;
             }
 
-            if (!this.closingModal('closingModalOnClickAway')) {
-                return;
-            }
+                const canClose = this.closingModal('closingModalOnClickAway');
 
-            this.closeModal(true);
+                // If the closingModal check returned false, it might be because the
+                // active component no longer exists on the backend (race condition).
+                // In that case, ensure the UI/backdrop is hidden to avoid a stuck overlay.
+                if (!canClose) {
+                    const components = this.$wire.get('components') || {};
+                    const comp = components[this.activeComponent];
+
+                    if (!comp) {
+                        this.setShowPropertyTo(false);
+                        return;
+                    }
+
+                    return;
+                }
+
+                this.closeModal(true);
         },
 
         closingModal(eventName) {
