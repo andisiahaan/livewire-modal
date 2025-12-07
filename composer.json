@@ -20,7 +20,8 @@
         "livewire/livewire": "^4.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^9.0"
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^12.3"
     },
     "autoload": {
         "psr-4": {

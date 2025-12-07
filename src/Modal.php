@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Reflector;
 use Illuminate\View\View;
+use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\Mechanisms\ComponentRegistry;
 use ReflectionClass;
 use ReflectionProperty;
 
@@ -28,22 +28,25 @@ class Modal extends Component
     public function openModal($component, $arguments = [], $modalAttributes = []): void
     {
         $requiredInterface = \AndiSiahaan\LivewireModal\Contracts\ModalComponent::class;
-        $componentClass = app(ComponentRegistry::class)->getClass($component);
 
-        if (!$componentClass) {
-            throw new Exception("Component [{$component}] not found.");
+        try {
+            $instance = \Livewire\Livewire::new($component);
+        } catch (Exception $e) {
+            throw new Exception("Component [{$component}] not found. Error: " . $e->getMessage());
         }
 
-        $reflect = new ReflectionClass($componentClass);
+        $reflect = new ReflectionClass($instance);
 
         if ($reflect->implementsInterface($requiredInterface) === false) {
-            throw new Exception("[{$componentClass}] does not implement [{$requiredInterface}] interface.");
+            throw new Exception("[" . get_class($instance) . "] does not implement [{$requiredInterface}] interface.");
         }
+
+        $componentClass = get_class($instance);
 
         $id = md5($component . serialize($arguments));
 
         $arguments = collect($arguments)
-            ->merge($this->resolveComponentProps($arguments, new $componentClass()))
+            ->merge($this->resolveComponentProps($arguments, $instance))
             ->all();
 
         $this->components[$id] = [
@@ -63,6 +66,32 @@ class Modal extends Component
         $this->activeComponent = $id;
 
         $this->dispatch('activeModalComponentChanged', id: $id);
+    }
+
+    #[On('closeModal')]
+    public function closeModal($force = false, $skipPreviousModals = 0, $destroySkipped = false, array $events = []): void
+    {
+        if (!empty($events)) {
+            foreach ($events as $event) {
+                if (isset($event['name'])) {
+                    $this->dispatch($event['name'], ...($event['params'] ?? []));
+                }
+            }
+        }
+
+        if ($this->activeComponent) {
+            $this->destroyComponent($this->activeComponent);
+
+            $keys = array_keys($this->components);
+
+            if (count($keys) > 0) {
+                $this->activeComponent = end($keys);
+            } else {
+                $this->activeComponent = null;
+            }
+
+            $this->dispatch('activeModalComponentChanged', id: $this->activeComponent);
+        }
     }
 
     public function resolveComponentProps(array $attributes, Component $component): Collection
