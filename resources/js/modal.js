@@ -39,10 +39,18 @@ window.LivewireModal = () => {
         },
 
         closingModal(eventName) {
-            const componentName = this.$wire.get('components')[this.activeComponent].name;
+            const components = this.$wire.get('components') || {};
+            const active = this.activeComponent;
+            const comp = components[active];
+
+            if (!comp || !comp.name) {
+                return false;
+            }
+
+            const componentName = comp.name;
 
             var params = {
-                id: this.activeComponent,
+                id: active,
                 closing: true,
             };
 
@@ -89,6 +97,14 @@ window.LivewireModal = () => {
         },
 
         setActiveModalComponent(id, skip = false) {
+            // If backend sent a null/false id it means there is no active component
+            // and the modal should be fully closed (remove backdrop too).
+            if (id === null || id === false) {
+                this.setShowPropertyTo(false);
+                this.activeComponent = false;
+                return;
+            }
+
             this.setShowPropertyTo(true);
 
             if (this.activeComponent === id) {
